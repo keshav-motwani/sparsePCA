@@ -1,0 +1,419 @@
+\documentclass[xcolor=x11names]{beamer}
+\usepackage{amsmath, amssymb, color, graphicx}
+\usepackage{mathpazo}
+\usefonttheme{serif}
+\usepackage{subcaption}
+\usepackage{graphicx}
+
+\def\bi{\begin{itemize}}
+\def\ei{\end{itemize}}
+\def\bn{\begin{enumerate}}
+\def\en{\end{enumerate}}
+\def\i{\item}
+
+%\makeatletter
+%\g@addto@macro\normalsize{%
+%    \setlength\belowdisplayskip{-0pt}
+%}
+%\makeatletter
+%\g@addto@macro\normalsize{%
+%    \setlength\abovedisplayskip{-0pt}
+%}
+
+\newcommand{\argmax}{\operatorname*{arg \ max}}
+\newcommand{\argmin}{\operatorname*{arg \ min}}
+\newcommand{\var}{\operatorname*{Var}}
+\newcommand{\tr}{\operatorname*{tr}}
+\newcommand{\eig}{\operatorname*{eig}}
+\newcommand{\diag}{\operatorname*{diag}}
+\newcommand{\sgn}{\operatorname*{sgn}}
+
+\title{A tutorial on sparse principal components analysis}
+\author{Keshav Motwani}
+\date{\today}
+
+
+\begin{document}
+
+
+\frame{\titlepage}
+
+\frame{
+	\frametitle{Principal components analysis (PCA)}
+	Idea: high-dimensional data lives in a lower dimensional subspace
+	\bi
+		\i Find linear combinations of input features that contain directions of variability in the data
+$$
+\argmax_{w_i: \,||w_i||_2^2 = 1} \var(Xw_i) \quad \text{s.t. } \quad w_j'w_k = 0 \text{ for all } j \neq k
+$$
+		\i Solution is leading eigenvectors of $X'X$ or equivalently right singular vectors of $X$
+		\i Turns out to also minimize reconstruction error
+$$
+\argmin_{W: W'W = I} ||X - XWW'||_F^2
+$$
+			since we can show
+$$
+||X - XWW'||_F^2 = \tr(X'X) - \tr(W'X'XW)
+$$
+	\ei
+}
+
+\frame{
+	\frametitle{Sparse PCA}
+	Regular principal components are a weighted sum of ALL features in the data
+	\bi
+		\i Not very interpretable
+		\i Inducing sparsity in the loading vectors $w_i$ can solve this
+			\bi
+				\i Each principal component is then only the weighted sum of a subset of features in the data
+			\ei
+		\i Many proposed methods for this task
+			\bi
+				\i Zou, Hastie, and Tibshirani proposed a method based on reduced-rank regression in 2006
+				\i Witten, Hastie, and Tibshirani proposed a method based on a penalized matrix decomposition in 2010
+			\ei
+	\ei
+}
+
+\frame{
+	\frametitle{PCA as reduced-rank regression}
+	Consider the following regression problem:
+$$
+X = XBA' + E, \quad X \in \mathbb{R}^{n \times p}, \quad B, A \in \mathbb{R}^{p \times r}, \quad E \in \mathbb{R}^{n \times p}, \quad A'A = I_r
+$$
+	\bi
+		\i $BA'$ is a rank-$r$ matrix of regression coefficients 
+		\i $E$ is an error matrix
+	\ei
+	\vspace{0.3cm}
+	 To minimize the errors, we want the following:
+$$
+\argmin_{A, \,B: \,A'A = I_r} ||X - XBA'||_F^2
+$$
+	\bi
+		\i Similar to minimizing reconstruction error in normal PCA, but here we have two separate matrices $B$ and $A$
+		\i Columns of $B$ are related to loading vectors
+	\ei
+}
+
+\frame{
+	\frametitle{Equivalence of regression form and PCA when $n > p$}
+	Want to solve
+$$
+\argmin_{A, \,B: \,A'A = I_r} ||X - XBA'||_F^2
+$$
+	\bi
+		\i With $A$ fixed, we can construct a matrix $A_{\bot} \in \mathbb{R}^{p \times (p - r)}$ such that $\left[A, A_{\bot}\right]'\left[A, A_{\bot}\right] = \left[A, A_{\bot}\right]\left[A, A_{\bot}\right]' = I_p$.
+		\i With this, we can show:
+\begin{align*}
+||X - XBA'||_F^2 &= ||(X - XBA')\left[A, A_{\bot}\right]||_F^2 \\
+&= ||XA - XB||_F^2 + ||XA_{\bot}||_F^2.
+\end{align*}
+		\i Taking the gradient with respect to $B$ and setting it to 0, we get
+\begin{align*}
+-X'(XA - XB) &= 0 \\
+\implies B &= (X'X)^{-1}X'XA \\
+\implies \hat{B} &= A
+\end{align*}
+		\i With $B$ fixed at $\hat{B} = A$, we get the minimum reconstruction error formulation of regular PCA
+	\ei
+}
+
+\frame{
+	\frametitle{Addition of ridge penalty when $p > n$}
+	Want to solve
+$$
+\argmin_{A, \,B: \,A'A = I_r} ||X - XBA'||_F^2 + \lambda||B||_F^2
+$$
+	\bi
+		\i With $A$ fixed, we can construct a matrix $A_{\bot}$ as in last slide
+		\i Again, we have
+\begin{align*}
+||X - XBA'||_F^2 + \lambda||B||_F^2 &= ||XA - XB||_F^2 + ||XA_{\bot}||_F^2 + \lambda||B||_F^2
+\end{align*}
+		\i Taking the gradient with respect to $B$ and setting it to 0, we get
+\begin{align*}
+-X'(XA - XB) + \lambda B &= 0 \\
+\implies X'XA &= (X'X + \lambda I_p)B\\
+\implies \hat{B} &= (X'X + \lambda I_p)^{-1}X'XA
+\end{align*}
+		\i We can also show
+\begin{align*}
+-X'(XA - XB) + \lambda B &= 0 \\
+\implies \lambda ||\hat{B}||_F^2 &= \tr(\hat{B}'X'(XA - X\hat{B})).
+\end{align*}
+	\ei
+}
+
+\frame{
+	\frametitle{Addition of ridge penalty when $p > n$}
+	Want to solve
+$$
+\argmin_{A, \,B: \,A'A = I_r} ||X - XBA'||_F^2 + \lambda||B||_F^2
+$$
+	\bi
+		\i With $B$ fixed at $\hat{B}$, we need to minimize
+\begin{align*}
+C_\lambda(A, \hat{B}) &= ||X - X\hat{B}A'||_F^2 + \lambda||\hat{B}||_F^2\\
+&= \tr(X'X) - \tr(A'X'X(X'X + \lambda I_p)^{-1}X'XA)
+\end{align*}
+		such that $A'A = I_r$
+		\i By similar argument as that in maximum variance formulation of PCA, solution is the first $r$ eigenvectors of $X'X(X'X + \lambda I_p)^{-1}X'X$
+		\i Letting $UDV' = X$ be the SVD of X, we can show
+$$
+X'X(X'X + \lambda I_p)^{-1}X'X = VD^2(D^2 + \lambda I_p)^{-1}D^2V'
+$$
+		so $\hat{A} = V_{\cdot, 1:r}$
+	\ei
+}
+
+\frame{
+	\frametitle{Addition of ridge penalty when $p > n$}
+	\bi
+		\i In summary, we have 
+$$
+\hat{B} = (X'X + \lambda I_p)^{-1}X'XA
+$$
+$$
+\hat{A} = V_{\cdot, 1:r}
+$$	
+		\i Letting $UDV' = X$ be the SVD, we can show
+$$
+\hat{B} = V(D^2  + \lambda I_p)^{-1}D^2V'A
+$$
+		and thus with $A = \hat{A}$, we have
+$$
+\hat{B} = V_{\cdot, 1:r}\left[(D^2  + \lambda I_p)^{-1}D^2\right]_{1:r, 1:r}
+$$
+		\i In other words, $\hat{B}$ is simply a scaled version of $V$, the loading vectors from regular PCA
+		\i Since  regular loading vectors are unit vectors, we can recover them with $w_i = \frac{B_{\cdot, i}}{||B_{\cdot, i}||_2}$
+	\ei
+}
+
+\frame{
+	\frametitle{Extension to sparsity}
+We want sparsity in columns of $B$, so we can add another penalty
+\begin{equation*}
+\argmin_{A, \,B: \,A'A = I_r} ||X - XBA'||_F^2 + \lambda||B||_F^2 + ||B\diag(\lambda_{1, 1}, \dots, \lambda_{1, r})||_1
+\end{equation*}
+where $\lambda_{1, 1}, \dots, \lambda_{1, r}$ are tuning parameters to control the degree of sparsity in each loading vector separately
+}
+
+\frame{
+	\frametitle{Extension to sparsity}
+Once again, with $A$ fixed, we want to minimize
+\begin{align*}
+C_{\lambda, \lambda_1}(A, B) &= ||X - XBA'||_F^2 + \lambda||B||_F^2 + ||B\diag(\lambda_{1, 1}, \dots, \lambda_{1, r})||_1 \\
+&=  ||XA - XB||_F^2 + ||XA_{\bot}||_F^2 + \lambda||B||_F^2 \\
+&+ ||B\diag(\lambda_{1, 1}, \dots, \lambda_{1, r})||_1.
+\end{align*}
+The terms with $B$ can be rewritten as
+$$
+\sum_{i = 1}^r ||XA_{\cdot, i} - XB_{\cdot, i}||_2^2 + \lambda||B_{\cdot, i}||_2^2 + \lambda_{1,  r}||B_{\cdot, i}||_1
+$$
+	\bi
+		\i Same as solving $r$ independent elastic net regression problems
+	\ei
+}
+
+\frame{
+	\frametitle{Extension to sparsity}
+With $B$ fixed, we want to minimize
+\begin{align*}
+||X - XBA'||_F^2 &= \tr((X - XBA')'(X - XBA')) \\
+&= \tr(X'X) - 2\tr(X'XBA') + \tr(AB'X'XBA') \\
+&= \tr(X'X) - 2\tr(X'XBA') + \tr(B'X'XB)
+\end{align*}
+subject to $A'A = I_r$. 
+Thus we need to maximize 
+$$
+\tr(X'XBA')
+$$
+If we let $UDV' = X'XB$, we get 
+$$
+\tr(X'XBA') = \tr(UDV'A') = \tr(V'A'UD)
+$$
+Since $D$ is diagonal, we want to maximize the elements of the diagonal of $V'A'U$. Since $V'A'U$ is orthogonal, this is maximized by letting $V'A'U = I_r$, so $V'A' = U'$ or $A = UV'$
+}
+
+\frame{
+	\frametitle{Algorithm}
+	\bi
+		\i Initialize $A$ to regular right singular vectors and $B$ to solution of elastic net regression with the fixed $A$
+		\i Until convergence
+			\bi
+				\i Update $A$ with $B$ fixed
+				\i Update $B$ with $A$ fixed
+			\ei
+	\ei
+}
+
+\frame{
+	\frametitle{Sparse PCA as penalized matrix decomposition}
+	\bi
+		\i From SVD of $X = UDV'$, loading vectors are columns of $V$
+		\i Well known result by Eckart and Young that best rank-$r$ approximation to $X$ is 
+$$
+\argmin_{\hat{X} \in M(r)} ||X - \hat{X}||_F^2 = U_{\cdot, 1:r}D_{1:r, 1:r}V_{\cdot, 1:r}'
+$$
+		\i Considering rank-$1$ approximation first, we want to solve
+$$
+\argmin_{d, u, v} ||X - duv'||_F^2 
+$$
+$$
+u'u = 1, \quad v'v = 1, \quad ||v||_1 \leq c, \quad d \geq 0
+$$
+where $L_1$ constraint induces sparsity in $v$
+	\ei
+}
+
+\frame{
+	\frametitle{Rank-1 approximation with sparse $v$}
+	\bi
+		\i Problem equivalent to
+$$
+\argmin_{d, u, v} -2du'Xv + d^2
+$$
+$$
+u'u = 1, \quad v'v = 1, \quad ||v||_1 \leq c, \quad d \geq 0
+$$
+		\i $u$ and $v$ that solve the above must also solve
+$$
+\argmax_{u, v} u'Xv
+$$
+$$
+u'u = 1, \quad v'v = 1, \quad ||v||_1 \leq c
+$$
+		with $d = u'Xv$
+		\i To make it a biconvex problem, relax equality constraints
+$$
+\argmax_{u, v} u'Xv
+$$
+$$
+u'u \leq 1, \quad v'v \leq 1, \quad ||v||_1 \leq c
+$$
+	\ei
+}
+
+\frame{
+	\frametitle{Rank-1 approximation with sparse $v$}
+	\bi
+		\i With $v$ fixed, we want to solve
+$$
+\argmin_{u} -u'Xv \quad \text{subject to} \quad u'u \leq 1
+$$
+		\i Can show that
+$$
+u = \frac{Xv}{||Xv||_2}
+$$
+		satisfies the KKT conditions
+	\ei
+}
+
+\frame{
+	\frametitle{Rank-1 approximation with sparse $v$}
+	\bi
+		\i With $u$ fixed, we want to solve
+$$
+\argmin_{v} -u'Xv \quad \text{subject to} \quad v'v \leq 1, \quad ||v||_1 \leq c
+$$
+		\i Can show that
+$$
+v = \frac{S(X'u, \Delta)}{||S(X'u, \Delta)||_2}
+$$
+		satisfies the KKT conditions, where $S$ is the soft-thresholding operator $S(a, \Delta) = \sgn(a)(|a| - \Delta)_{+}$ and $\Delta$ is chosen by binary search to satisfy the constraint on $v$
+	\ei
+}
+
+\frame{
+	\frametitle{Algorithm}
+	\bi
+		\i Initialize $v$ to regular first right singular vector
+		\i Until convergence
+			\bi
+				\i Update $u$ with $v$ fixed
+				\i Update $v$ with $u$ fixed
+				\i Set $d = uXv'$
+			\ei
+	\ei
+}
+
+\frame{
+	\frametitle{Extension to multiple sparse principal components}
+	\bi
+		\i For $k > 1$, to obtain $d_k$, $u_k$, and $v_k$, repeat algorithm for rank-$1$ approximation on 
+$$
+X - \sum_{i = 1}^{k - 1} d_i u_i v_i'
+$$
+	\ei
+}
+
+\frame{
+	\frametitle{Extension to multiple sparse principal components with orthogonal $U$}
+	\bi
+		\i If we let $U_{k - 1} = \left[u_1, \dots, u_{k - 1} \right]$, we want to solve
+$$
+\argmax_{u_k, v_k} u_k'Xv_k
+$$
+$$
+u_k'u_k = 1, \quad v_k'v_k = 1, \quad ||v_k||_1 \leq c, \quad U_{k - 1}'u_k	 = 0
+$$
+		\i In other words, solution to $u_k$ in the column space of $U_{k - 1}^{\bot}$, where $U_{k - 1}^{\bot}$ is a matrix with columns as basis vectors orthogonal to $U_{k - 1}$
+		\i We want $u_k = U_{k - 1}^{\bot} \theta$ for some $\theta$
+$$
+\argmax_{\theta} \theta'U_{k - 1}^{\bot'}Xv_k \quad \text{subject to} \quad \theta'\theta \leq 1
+$$
+$$
+\theta = \frac{U_{k - 1}^{\bot'}Xv_k}{||U_{k - 1}^{\bot'}Xv_k||_2}
+$$
+	\ei
+}
+
+\frame{
+	\frametitle{Extension to multiple sparse principal components with orthogonal $U$}
+	\bi
+		\i From the last slide, we have
+$$
+\theta = \frac{U_{k - 1}^{\bot'}Xv_k}{||U_{k - 1}^{\bot'}Xv_k||_2}
+$$
+		\i Therefore, since $u_k = U_{k - 1}^{\bot} \theta$ ,
+$$
+u_k =  \frac{U_{k - 1}^{\bot}U_{k - 1}^{\bot'}Xv_k}{||U_{k - 1}^{\bot'}Xv_k||_2}
+$$
+		\i How do we compute this?
+	\ei
+}
+
+\frame{
+	\frametitle{Extension to multiple sparse principal components with orthogonal $U$}
+	\bi
+		\i First note that 
+$$
+||U_{k - 1}^{\bot}U_{k - 1}^{\bot'}Xv_k||_2 = ||U_{k - 1}^{\bot'}Xv_k||_2
+$$
+		so if we can solve for 
+$$
+u_k^{*} = U_{k - 1}^{\bot}U_{k - 1}^{\bot'}Xv_k
+$$
+		then $u_k = \frac{u_k^{*}}{||u_k^{*}||_2}$
+		\i We can see that $U_{k - 1}^{\bot}U_{k - 1}^{\bot'}$ is an orthogonal projection through connection with least squares regression
+$$
+U_{k - 1}^{\bot}U_{k - 1}^{\bot'}Xv_k = U_{k - 1}^{\bot}(U_{k - 1}^{\bot'}U_{k - 1}^{\bot})^{-1}U_{k - 1}^{\bot'}Xv_k.
+$$
+and thus we have
+$$
+U_{k - 1}(U_{k - 1}'U_{k - 1})^{-1}U_{k - 1}' = I_r - U_{k - 1}^{\bot}(U_{k - 1}^{\bot'}U_{k - 1}^{\bot})^{-1}U_{k - 1}^{\bot'}
+$$
+	\ei
+}
+
+\frame{
+	\frametitle{Conclusion}
+	\bi
+		\i Many interesting formulations of PCA with extensions to sparsity
+		\i Detailed proofs for claims mentioned here are in write-up
+		\i Implementations for these methods also provided and explained in write-up
+	\ei
+}
+
+\end{document}
