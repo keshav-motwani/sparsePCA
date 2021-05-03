@@ -7,4 +7,4 @@ In this project, we present the methods of sparse PCA from [Zou et al. 2006](htt
 
 We walk through the derivations for the results presented in these papers in a detailed manner and also walk through how to implement them in R.
 
-Please take a look at the paper and slides in this repository.
+Please take a look at the [paper](https://github.com/keshav-motwani/sparsePCA/blob/master/paper/paper.pdf) and [slides](https://github.com/keshav-motwani/sparsePCA/blob/master/slides/slides.pdf) in this repository.
